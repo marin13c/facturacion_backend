@@ -7,6 +7,12 @@ const InvoiceSchema = new mongoose.Schema(
     service: { type: String, required: true },
     comments: { type: String },
     date: { type: Date },
+    status: {
+      type: String,
+      enum: ["Pendiente", "Pagada", "Cancelada"],
+      default: "Pendiente",
+    },
+
     createdBy: { type: String, required: true }, // nombre del creador
     createdByEmail: { type: String, required: true }, // correo del creador
   },

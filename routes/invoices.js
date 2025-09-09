@@ -81,4 +81,74 @@ router.get("/pending", async (req, res) => {
   }
 });
 
+// Obtener facturas enviadas por el usuario logueado
+router.get("/sent", async (req, res) => {
+  try {
+    const token = req.headers.authorization;
+    if (!token) return res.status(401).json({ message: "No autorizado" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userEmail = decoded.email;
+
+    const invoices = await Invoice.find({ createdByEmail: userEmail });
+    res.json(invoices);
+  } catch (err) {
+    res.status(500).json({ message: "Error al obtener facturas enviadas" });
+  }
+});
+// Obtener facturas pendientes para el usuario logueado
+router.get("/pending", async (req, res) => {
+  try {
+    const token = req.headers.authorization;
+    if (!token) return res.status(401).json({ message: "No autorizado" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userEmail = decoded.email;
+
+    const invoices = await Invoice.find({
+      toUserEmail: userEmail,
+      status: "pendiente",
+    });
+    res.json(invoices);
+  } catch (err) {
+    res.status(500).json({ message: "Error al obtener facturas pendientes" });
+  }
+});
+// Actualizar estado de una factura
+router.put("/:id/status", async (req, res) => {
+  try {
+    const token = req.headers.authorization;
+    if (!token) return res.status(401).json({ message: "No autorizado" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userEmail = decoded.email;
+
+    const { status } = req.body;
+    if (!status || !["pendiente", "pagada", "cancelada"].includes(status)) {
+      return res.status(400).json({ message: "Estado inválido" });
+    }
+
+    // Buscar factura
+    const invoice = await Invoice.findById(req.params.id);
+    if (!invoice) {
+      return res.status(404).json({ message: "Factura no encontrada" });
+    }
+
+    // ✅ Solo puede cambiar estado quien la recibió
+    if (invoice.toUserEmail !== userEmail) {
+      return res
+        .status(403)
+        .json({ message: "No autorizado para actualizar esta factura" });
+    }
+
+    invoice.status = status;
+    await invoice.save();
+
+    res.json({ message: "Estado actualizado correctamente", invoice });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error al actualizar estado" });
+  }
+});
+
 module.exports = router;
