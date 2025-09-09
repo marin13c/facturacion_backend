@@ -13,6 +13,9 @@ app.use(express.json());
 const authRoutes = require("./routes/auth");
 app.use("/api/auth", authRoutes);
 
+const invoiceRoutes = require("./routes/invoices");
+app.use("/api/invoices", invoiceRoutes);
+
 // Puerto
 const PORT = process.env.PORT || 4000;
 
