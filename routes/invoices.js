@@ -1,23 +1,22 @@
 const express = require("express");
 const router = express.Router();
 const Invoice = require("../models/Invoice");
-const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 
-// Middleware para validar token
+// Middleware de autenticación
 const authMiddleware = (req, res, next) => {
-  const token = req.headers["authorization"];
-  if (!token) return res.status(401).json({ message: "No autorizado" });
+  const token = req.headers.authorization;
+  if (!token) return res.status(403).json({ message: "No autorizado" });
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.userId = decoded.id;
+    req.userEmail = decoded.email; // 🔹 asegurarnos de que el token tenga email
     next();
   } catch (err) {
-    res.status(401).json({ message: "Token inválido" });
+    res.status(403).json({ message: "Token inválido" });
   }
 };
-
 // Crear factura
 router.post("/", async (req, res) => {
   try {
@@ -151,4 +150,33 @@ router.put("/:id/status", async (req, res) => {
   }
 });
 
+// Ruta para marcar factura como pagada y guardar imagen en Base64
+router.post("/:id/pay", authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { imageBase64 } = req.body;
+
+    if (!imageBase64)
+      return res.status(400).json({ message: "Se requiere una imagen" });
+
+    const invoice = await Invoice.findById(id);
+    if (!invoice)
+      return res.status(404).json({ message: "Factura no encontrada" });
+
+    // Validar que solo el destinatario pueda marcar como pagada
+    if (invoice.toUserEmail !== req.userEmail)
+      return res
+        .status(403)
+        .json({ message: "No autorizado para marcar esta factura" });
+
+    invoice.status = "Pagada";
+    invoice.paymentImage = imageBase64; // 🔹 guardamos imagen en base64
+    await invoice.save();
+
+    res.json({ message: "Factura marcada como pagada", invoice });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Error al actualizar factura" });
+  }
+});
 module.exports = router;

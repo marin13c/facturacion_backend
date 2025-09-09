@@ -7,7 +7,10 @@ const app = express();
 
 // Middlewares
 app.use(cors());
-app.use(express.json());
+
+// Middleware para permitir JSON grande (incluyendo imágenes en base64)
+app.use(express.json({ limit: "10mb" })); // acepta hasta 10MB
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 // Rutas
 const authRoutes = require("./routes/auth");
